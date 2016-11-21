@@ -20,11 +20,13 @@ enum STATUS_GSM resp = ERROR;
 enum gsm_state{
 	check_comunication,
 	wfr_comunication,
-	check_amount_of_pin,
+	check_amount_of_pin_or_puk,
 	wfr_amount_of_pin,
+	wfr_amount_of_puk,
 	ask_for_pin,
-	enter_pin,
+	ask_for_puk,
 	wfr_enter_pin,
+	wfr_enter_puk,
 };
 
 enum gsm_state current_state = check_comunication;
@@ -85,6 +87,8 @@ int main(int argc, char *argv[])
 	int retval;
 	int amount;
 	char pin[7];
+	char puk[11];
+	int cout=3;
 		printf("Mam stan rowny: %d\n",current_state);
 		switch(current_state){
 		
@@ -98,11 +102,11 @@ int main(int argc, char *argv[])
 					retval = read(fd, buf, sizeof(buf));
 					resp = check_response(buf, retval);
 					if(resp == OK)
-						current_state = check_amount_of_pin;
+						current_state = check_amount_of_pin_or_puk;
 					printf("ANSWER: %d %s\n", resp, buf);	
 					break;
 					
-			case check_amount_of_pin:
+			case check_amount_of_pin_or_puk:
 					my_write(fd, "AT#PCT\r\n");
 					current_state = wfr_amount_of_pin;	
 					break;
@@ -117,15 +121,41 @@ int main(int argc, char *argv[])
 					}	
 					if(resp == OK)
 							current_state = ask_for_pin;
-						printf("ANSWER: %d %s\n", resp, buf);		
+					if(cout == 1){
+							cout--;
+							printf("WARRNING! YOU HAVE LAST CHANCE!");
+					}
+							printf("ANSWER: %d %s\n", resp, buf);		
+					break;
+			case wfr_amount_of_puk:
+					memset(buf, 0, sizeof(buf));
+					resp = check_response(buf,retval);
+					if(strstr(buf,"#PCT:")){
+					sscanf(buf,"#PCT: %d",&amount);
+					printf("You have: %d chance yet!\n", amount);
+					}	
+					if(resp == OK)
+							current_state = ask_for_puk;
+					if(cout == 1){
+							cout--;
+							printf("WARRNING! YOU HAVE LAST CHANCE!");
+					}
+						printf("ANSWER: %d %s\n", resp, buf);
 					break;		
 			case ask_for_pin:
 					printf("Enter PIN: \n");
 					scanf("%s",pin);
-					snprintf(buf,sizeof(buf),"AT+CPIN=\"%d\"\r\n);
+					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",pin);
 							current_state = wfr_enter_pin;
 					printf("ANSWER: %d %s\n", resp, buf);	
 					break;
+			case ask_for_puk:
+					printf("Enter PUK: \n");
+					scanf("%s",puk);
+					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",puk);
+							current_state = wfr_enter_pin;
+					printf("ANSWER: %d %s\n", resp, buf);
+					break;		
 			case wfr_enter_pin:
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf));
@@ -133,7 +163,16 @@ int main(int argc, char *argv[])
 					if(resp == OK)
 						printf("Your Pin is correct");
 					if(resp == ERROR)
-						current_state = check_amount_of_pin;		
+						current_state = check_amount_of_pin_or_puk;		
+					break;
+			case wfr_enter_puk:
+					memset(buf, 0, sizeof(buf));
+					retval = read(fd, buf, sizeof(buf));
+					resp = check_response(buf, retval);
+					if(resp == OK)
+						printf("Your PUK is correct");
+					if(resp == ERROR)
+						current_state = check_amount_of_pin_or_puk;		
 					break;
 			default:
 				printf("ERROR\n");
