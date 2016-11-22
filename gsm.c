@@ -7,14 +7,7 @@
 #include <stdlib.h>     
 #include <sys/types.h>
 #include <sys/stat.h>
-
-enum STATUS_GSM{	
-	NONE,
-	OK,
-	ERROR,
-	CME_ERROR,
-	CMS_ERROR,};
-	
+#include "gsm.h"
 enum STATUS_GSM resp = ERROR;
 
 enum gsm_state{
@@ -32,7 +25,6 @@ enum gsm_state{
 	end,
 };
 
-enum gsm_state current_state = check_comunication;
 
 enum STATUS_GSM check_response(char *buf, ssize_t size)
 {
@@ -44,56 +36,26 @@ enum STATUS_GSM check_response(char *buf, ssize_t size)
 		return ERROR;
 	return NONE;
 }
+
 int my_write(int file, char *data)
 {
        return write(file, data, strlen(data) + 1);
 }
 
-
-//File descriptor
-int fd;
-int main(int argc, char *argv[])
-{
-    fd=open("/dev/ttyUSB0",O_RDWR);
-    if(fd<0)
-    {
-	printf("IS NOT CONNECTION\n");
-        return 0;
-    }
-	struct termios tty;
-	
-	tcgetattr(fd, &tty);
-	
-	cfsetispeed(&tty, B115200);
-	cfsetospeed(&tty, B115200);
-
-	/* Setting other Port Stuff */
-	tty.c_cflag     &=  ~PARENB;        // Make 8n1
-	tty.c_cflag     &=  ~CSTOPB;
-	tty.c_cflag     &=  ~CSIZE;
-	tty.c_cflag     |=  CS8;
-	tty.c_cflag     &=  ~CRTSCTS;       // no flow control
-	tty.c_lflag     =   ICANON;          // no signaling chars, no echo, 												canonical processing
-	tty.c_oflag     =   0;                  // no remapping, no delays
-	tty.c_cc[VMIN]      =   0;              // read doesn't block
-	tty.c_cc[VTIME]     =   15;             // 1.5 seconds read timeout
-
-	tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl 							   						lines
-	tty.c_iflag     &=  ~(IXON | IXOFF | IXANY);// turn off s/w flow ctrl
-	tty.c_lflag     &=  ~(ECHO | ECHOE | ISIG); // make raw
-	tty.c_oflag     &=  ~OPOST;              	// make raw
-
-	tcsetattr(fd, TCSANOW, &tty);
-	
-	while(1){		
-	char buf[128];
+void state_machine(int fd){
+char buf[128];
 	int retval;
 	int amount;
 	char pin[7];
 	char puk[11];
-	char lck_type[7];
-	int subcurrent_state = wfr_comunication;
+	static char lck_type[7];
+	static int subcurrent_state = wfr_comunication;
+	static enum gsm_state current_state = check_comunication;
+	static enum gsm_state old_state = end;
+		if(current_state!=old_state){
+		old_state=current_state;
 		printf("Mam stan rowny: %d\n",current_state);
+		}
 		switch(current_state){
 		
 	 		case check_comunication: /* 0 */
@@ -117,12 +79,7 @@ int main(int argc, char *argv[])
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf)); 
 					resp = check_response(buf, retval);
-					if(strstr(buf,"SIM PIN")){
-						sscanf(buf,"+CPIN: SIM %s", lck_type);
-						printf("You must write a %s!", lck_type);
-						
-						subcurrent_state = check_amount_of_pin_or_puk;
-					}else if(strstr(buf,"SIM PUK")){
+					if(strstr(buf,"SIM PIN")||strstr(buf,"SIM PUK")){
 						sscanf(buf,"+CPIN: SIM %s", lck_type);
 						printf("You must write a %s!", lck_type);
 						
@@ -210,8 +167,7 @@ int main(int argc, char *argv[])
 				printf("ERROR\n");
 				exit(-6);
 	    }
-	    sleep(1);
-    }
+
+
+
 }
-
-
