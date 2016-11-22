@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	tcsetattr(gsm_serial, TCSANOW, &tty);
 	
 	while(1){		
-		open_comunication(gsm_serial);
+		state_machine(gsm_serial);
 	    sleep(1);
     }
 }

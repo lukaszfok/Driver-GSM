@@ -24,5 +24,5 @@ enum STATUS_GSM check_response(char *buf, ssize_t size);
 * \brief Function stories state of machine 
 * \param[in] open comunication port bettwen modem GSM and user		
 */
-void open_comunication(int fd);
+void state_machine(int fd);
 #endif
