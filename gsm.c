@@ -136,7 +136,7 @@ void state_machine(int fd){
 					resp = check_response(buf, retval);	
 						if(strstr(buf,"SIM PIN")||strstr(buf,"SIM PUK")){
 					
-							sscanf(buf,"+CPIN: SIM %s", lck_type);
+							sscanf(buf,"+CPIN: SIM %4s", lck_type);
 							printf("You must write a %s!", lck_type);
 							subcurrent_state = check_amount_of_pin_or_puk;
 						
@@ -203,7 +203,7 @@ void state_machine(int fd){
 							
 			case ask_for_pin:/* 7 */
 					printf("Enter PIN: \n");
-					scanf("%s",pin);
+					scanf("%6s",pin);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
 					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",pin);
 					my_write(fd,buf);
@@ -213,7 +213,7 @@ void state_machine(int fd){
 					
 			case ask_for_puk:/* 8 */
 					printf("Enter PUK: \n");
-					scanf("%s",puk);
+					scanf("%10s",puk);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
 					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",puk);
 					my_write(fd,buf);
