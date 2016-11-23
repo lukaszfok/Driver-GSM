@@ -10,6 +10,7 @@ enum STATUS_GSM{
 	NONE,
 	OK,
 	ERROR,
+	READY,
 	CME_ERROR,
 	CMS_ERROR,};
 /*!
