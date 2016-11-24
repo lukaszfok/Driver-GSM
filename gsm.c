@@ -145,7 +145,7 @@ void state_machine(int fd){
 						
 						}else if(resp == READY){
 					
-							subcurrent_state = end; /* end for a test*/
+							subcurrent_state = change_your_pin; 
 						
 						}else if (resp == OK){
 					
@@ -274,12 +274,12 @@ void state_machine(int fd){
 					
 						if(resp == OK){
 							printf("Your PIN is change!\n");
-							current_state = ask_for_pin;
 						}else if(resp == ERROR){
 							current_state = change_your_pin;
 						}else if(endwait < clock()){
 							current_state = check_comunication;
-						}				
+						}
+						break;				
 			case end:
 					printf("THE END\n");
 					break;
