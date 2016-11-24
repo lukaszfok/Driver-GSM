@@ -34,6 +34,8 @@ enum gsm_state{
 	ask_for_puk,
 	wfr_enter_pin,
 	wfr_enter_puk,
+	change_your_pin,
+	wfr_change_pin,
 	end,
 };
 /*! \brief Function serch in buf to map predefined status value
@@ -82,7 +84,8 @@ void state_machine(int fd){
 	int retval;    /**< Read value */
 	int amount;    /**< Store a scan bufor*/
 	char pin[7];   /**< Table for pin size 7*/
-	char puk[11];  /**< Table for puk size 11*/
+	char changepin[16];
+	char puk[20];  /**< Table for puk size 11*/
 	static char lck_type[7];  /**< Table for sim lock type size 7 */
 	static int subcurrent_state = wfr_comunication; /**< New stan for PUK and pin verifie*/
 	/*!
@@ -103,13 +106,13 @@ void state_machine(int fd){
 		
 		switch(current_state){
 		
-	 		case check_comunication:/* 0 */
+	 		case check_comunication:
 					my_write(fd, "ate0\r\n");
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
 					current_state = wfr_comunication;
 					break;
 				
-			case wfr_comunication:/* 1 */	
+			case wfr_comunication:	
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf));
 					resp = check_response(buf, retval);
@@ -124,20 +127,20 @@ void state_machine(int fd){
 					printf("ANSWER: %d %s\n", resp, buf);	
 					break;
 					
-			case check_sim_state:/* 2 */
+			case check_sim_state:
 					my_write(fd, "AT+CPIN?\r\n");
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
 					current_state = wfr_spin_respons;
 					break;
 					
-			case wfr_spin_respons:/* 3 */
+			case wfr_spin_respons:
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf)); 
 					resp = check_response(buf, retval);	
 						if(strstr(buf,"SIM PIN")||strstr(buf,"SIM PUK")){
 					
 							sscanf(buf,"+CPIN: SIM %4s", lck_type);
-							printf("You must write a %s!", lck_type);
+							printf("You must write a %s!\n", lck_type);
 							subcurrent_state = check_amount_of_pin_or_puk;
 						
 						}else if(resp == READY){
@@ -154,13 +157,17 @@ void state_machine(int fd){
 					printf("ANSWER: %d %s\n", resp, buf);
 					break;
 							
-			case check_amount_of_pin_or_puk:/* 4 */
+			case check_amount_of_pin_or_puk:
 					my_write(fd, "AT#PCT\r\n");
 					endwait = clock() + 5 * CLOCKS_PER_SEC;
-					current_state = wfr_amount_of_pin;	
+					if(strncmp(lck_type,"PIN",3)==0){
+					current_state = wfr_amount_of_pin;
+					}else if(strncmp(lck_type,"PUK",3)==0){
+					current_state = wfr_amount_of_puk;
+					}	
 					break;
 			
-			case wfr_amount_of_pin:/* 5 */
+			case wfr_amount_of_pin:
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf)); 
 					resp = check_response(buf, retval);
@@ -169,31 +176,32 @@ void state_machine(int fd){
 					
 							sscanf(buf,"#PCT: %d",&amount);
 							printf("You have: %d chance yet! Enter %s\n", amount, lck_type);
-						}if(resp == OK){
+						}else if(resp == OK){
 								current_state = ask_for_pin;
-						}if(amount == 1){
-								printf("WARRNING! YOU HAVE LAST CHANCE!"); 						
+						}else if(amount == 1){
+								printf("WARRNING! YOU HAVE LAST CHANCE!\n");	
 						}else if(endwait < clock()){
 							current_state = check_comunication;
 						}
 						
+						
 					printf("ANSWER: %d %s\n", resp, buf);		
 					break;
 					
-			case wfr_amount_of_puk:/* 6 */
+			case wfr_amount_of_puk:
 					memset(buf, 0, sizeof(buf));
+					retval = read(fd, buf, sizeof(buf)); 
 					resp = check_response(buf,retval);
 					
 						if(strstr(buf,"#PCT:")){
 						
 							sscanf(buf,"#PCT: %d",&amount);
 							printf("You have: %d chance yet!\n", amount);
-						}	
+						}
 						if(resp == OK){
-							current_state = ask_for_puk;}	
-						if(amount == 1){
-							printf("WARRNING! YOU HAVE LAST CHANCE!");
-							
+							current_state = ask_for_puk;	
+						}else if(amount == 1){
+							printf("WARRNING! YOU HAVE LAST CHANCE!\n");
 						}else if(endwait < clock()){
 							current_state = check_comunication;
 						}
@@ -201,7 +209,7 @@ void state_machine(int fd){
 					printf("ANSWER: %d %s\n", resp, buf);
 					break;
 							
-			case ask_for_pin:/* 7 */
+			case ask_for_pin:
 					printf("Enter PIN: \n");
 					scanf("%6s",pin);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
@@ -211,17 +219,17 @@ void state_machine(int fd){
 					printf("ANSWER: %d %s\n", resp, buf);	
 					break;
 					
-			case ask_for_puk:/* 8 */
-					printf("Enter PUK: \n");
-					scanf("%10s",puk);
+			case ask_for_puk:
+					printf("Enter your \"PUK\",\"NEWPIN\": \n");
+					scanf("%19s",puk);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
 					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",puk);
 					my_write(fd,buf);
-					current_state = wfr_enter_pin;
+					current_state = wfr_enter_puk;
 					printf("ANSWER: %d %s\n", resp, buf);
 					break;
 							
-			case wfr_enter_pin:/* 9 */		
+			case wfr_enter_pin:		
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf));
 					resp = check_response(buf, retval);
@@ -229,26 +237,49 @@ void state_machine(int fd){
 						if(resp == OK){
 							printf("Your Pin is correct\n");
 						}else if(resp == ERROR){
-							current_state = check_amount_of_pin_or_puk;
+							current_state = check_sim_state;
 						}else if(endwait < clock()){
 							current_state = check_comunication;
 						}	
 					break;
 					
-			case wfr_enter_puk:/* 10 */		
+			case wfr_enter_puk:	
+					memset(buf, 0, sizeof(buf));
+					retval = read(fd, buf, sizeof(buf));
+					resp = check_response(buf, retval);
+						if(resp == OK){
+							printf("PUK is correct!\n");
+							current_state = check_sim_state;
+						}else if(resp==ERROR){
+							current_state = check_amount_of_pin_or_puk;
+						}else if(endwait < clock()){
+							current_state = check_comunication;
+						}	
+					break;
+										
+			case change_your_pin:
+					printf("Enter your old PIN and new PIN betten use , : \n");
+					scanf("%15s",changepin);
+					endwait = clock() + 5 * CLOCKS_PER_SEC; 
+					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",changepin);
+					my_write(fd,buf);
+					current_state = wfr_change_pin;
+					printf("ANSWER: %d %s\n", resp, buf);
+					break;
+					
+			case wfr_change_pin:
 					memset(buf, 0, sizeof(buf));
 					retval = read(fd, buf, sizeof(buf));
 					resp = check_response(buf, retval);
 					
 						if(resp == OK){
-							printf("Your PUK is correct\n");
-						}if(resp == ERROR){
-							current_state = check_amount_of_pin_or_puk;
+							printf("Your PIN is change!\n");
+							current_state = ask_for_pin;
+						}else if(resp == ERROR){
+							current_state = change_your_pin;
 						}else if(endwait < clock()){
 							current_state = check_comunication;
-						}	
-					break;
-					
+						}				
 			case end:
 					printf("THE END\n");
 					break;
