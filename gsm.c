@@ -83,8 +83,8 @@ void state_machine(int fd){
 	char buf[128]; /**< Table of bufor type character size 128 */
 	int retval;    /**< Read value */
 	int amount;    /**< Store a scan bufor*/
-	char pin[7];   /**< Table for pin size 7*/
-	char changepin[16];
+	char pin[8];   /**< Table for pin size 7*/
+	char newpin[8];
 	char puk[20];  /**< Table for puk size 11*/
 	static char lck_type[7];  /**< Table for sim lock type size 7 */
 	static int subcurrent_state = wfr_comunication; /**< New stan for PUK and pin verifie*/
@@ -211,7 +211,7 @@ void state_machine(int fd){
 							
 			case ask_for_pin:
 					printf("Enter PIN: \n");
-					scanf("%6s",pin);
+					scanf("%6s%*s",pin);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
 					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",pin);
 					my_write(fd,buf);
@@ -221,9 +221,9 @@ void state_machine(int fd){
 					
 			case ask_for_puk:
 					printf("Enter your \"PUK\",\"NEWPIN\": \n");
-					scanf("%19s",puk);
+					scanf("%11s%*s %7s%*s ",puk,pin);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
-					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",puk);
+					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\",\"%s\"\r\n",puk,pin);
 					my_write(fd,buf);
 					current_state = wfr_enter_puk;
 					printf("ANSWER: %d %s\n", resp, buf);
@@ -258,10 +258,10 @@ void state_machine(int fd){
 					break;
 										
 			case change_your_pin:
-					printf("Enter your old PIN and new PIN betten use , : \n");
-					scanf("%15s",changepin);
+					printf("Enter your old PIN and new PIN: \n");
+					scanf("%7s%*s %7s%*s",pin,newpin);
 					endwait = clock() + 5 * CLOCKS_PER_SEC; 
-					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\"\r\n",changepin);
+					snprintf(buf,sizeof(buf),"AT+CPIN=\"%s\",\"%s\"\r\n",pin,newpin);
 					my_write(fd,buf);
 					current_state = wfr_change_pin;
 					printf("ANSWER: %d %s\n", resp, buf);
