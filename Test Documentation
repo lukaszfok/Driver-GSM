@@ -1,0 +1,13 @@
+First step you must check your sim card if no have pin "use pin is unselect"
+probably Modul no work. If you check that second step insert your sim in the device 
+and connect the power supply and the serial port to your computer.Third step compile this sorce code on your computer after run your aplication.
+
+Compile tutorial
+
+cd /go to project path
+
+use gcc portopne.c gsm.c
+
+Run the program use ./a.out
+
+
