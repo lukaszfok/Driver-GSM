@@ -20,7 +20,8 @@ enum STATUS_GSM resp = ERROR;
 * verifies comunication next chceck SIM card state next verifies card state 
 * response next variable check what SIM need if need PIN go to PIN stan and 
 * ask user about PIN if need PUK go to PUK state and ask user for PUK next step 
-* is a verifies correct of PIN/PUK. 
+* is a verifies correct of PIN/PUK.The driver can change the password and when pin is block 
+* user can unblock the sim before enter the PUK after PIN. 
 */
 enum gsm_state{
 	check_comunication,
@@ -279,7 +280,8 @@ void state_machine(int fd){
 						}else if(endwait < clock()){
 							current_state = check_comunication;
 						}
-						break;				
+						break;
+										
 			case end:
 					printf("THE END\n");
 					break;
